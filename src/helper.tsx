@@ -22,41 +22,44 @@ export const BUBBLES_DATA = [
     position: { top: 0, left: 0 },
   },
   {
-    position: { top: 0, left: 0 },
+    position: { top: 25, left: (width - BALL_SIZE) / 2 },
     color: "#4d92f1",
     icon: <Store size={26} color={"white"} />,
   },
   {
-    position: { top: 0, left: 0 },
+    position: { top: 0, left: width - BALL_SIZE },
     color: "#f5984f",
     icon: <Smartphone size={26} color={"white"} />,
   },
 
   // Middle row - 2 bubbles
   {
-    position: { top: 0, left: 0 },
+    position: {
+      top: BOTTOM_HALF_HEIGHT / 2 - BALL_SIZE / 2,
+      left: width / 4 - BALL_SIZE / 2,
+    },
     color: "#f4df45ff",
     icon: <Atom size={26} color={"white"} />,
   },
   {
-    position: { top: 0, left: 0 },
+    position: { top: BOTTOM_HALF_HEIGHT / 2 - BALL_SIZE / 2, left: (width * 3) / 4 - BALL_SIZE / 2 },
     color: "#7add7b",
     icon: <Search size={26} color={"white"} />,
   },
 
   // Bottom row - 3 bubbles
   {
-    position: { top: 0, left: 0 },
+    position: { bottom: 0, left: 0 },
     color: "#4d92f1",
     icon: <Cpu size={26} color={"white"} />,
   },
   {
-    position: { top: 0, left: 0 },
+    position: { bottom: 5, left: (width - BALL_SIZE) / 2 },
     color: "#f5984f",
     icon: <GitFork size={26} color={"white"} />,
   },
   {
-    position: { top: 0, left: 0 },
+    position: { bottom: 0, left: width - BALL_SIZE },
     color: "#f4df45ff",
     icon: <Earth size={26} color={"white"} />,
   },

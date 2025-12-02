@@ -4,6 +4,7 @@ import { StatusBar } from "expo-status-bar";
 import { Image, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { BOTTOM_HALF_HEIGHT, BUBBLES_DATA } from "./helper";
+import Bubble from "./Bubble";
 
 export default function App() {
   const [loaded] = useFonts({
@@ -36,6 +37,14 @@ export default function App() {
           }}
         >
           {/* Bubbles will be rendered here */}
+          {BUBBLES_DATA.map((bubble, index) => (
+            <View
+              key={index}
+              style={[{ position: "absolute" }, bubble.position]}
+            >
+              <Bubble color={bubble.color} icon={bubble.icon} />
+            </View>
+          ))}
         </View>
       </View>
       <StatusBar style="auto" />
