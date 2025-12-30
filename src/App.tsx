@@ -1,52 +1,156 @@
-import { BlurView } from "expo-blur";
 import { useFonts } from "expo-font";
 import { StatusBar } from "expo-status-bar";
-import { Image, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { BOTTOM_HALF_HEIGHT, BUBBLES_DATA } from "./helper";
-import Bubble from "./Bubble";
+
+import { X } from "lucide-react-native";
+import { useState } from "react";
+import MainContent from "./MainContent";
+import Animated, {
+  interpolate,
+  interpolateColor,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from "react-native-reanimated";
+
+import MenuItem from "./MenuItem";
+import { scheduleOnRN } from "react-native-worklets";
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
+const menuItems = ["Home", "Services", "References", "Team & Career"];
 
 export default function App() {
   const [loaded] = useFonts({
     "Goldman-Bold": require("../assets/fonts/Goldman-Bold.ttf"),
     "Goldman-Regular": require("../assets/fonts/Goldman-Regular.ttf"),
   });
+
+  // State for visibility and selection
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [selectedMenuItem, setSelectedMenuItem] = useState<string | null>(null);
+
+  // Animation values: progress (0-1), layout measurement, and press effects
+  const progressValue = useSharedValue(0);
+  const menuButtonScale = useSharedValue(1);
+  const contentHeight = useSharedValue(0); // Dynamically measured via onLayout
+  const menuContainerScaleValue = useSharedValue(1);
+
+  const opacityBgStyles = useAnimatedStyle(() => {
+    return {
+      backgroundColor: interpolateColor(
+        progressValue.value,
+        [0, 1],
+        ["#00000000", "#00000026"]
+      ),
+    };
+  });
+
+  const menuButtonStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ scale: menuButtonScale.value }],
+    };
+  });
+
+  // Handles the closing animation and state cleanup
+  const closeMenuHandler = () => {
+    progressValue.value = withTiming(0, { duration: 400 }, (isFinished) => {
+      if (isFinished) {
+        // Toggle React state back to false on the JS thread after animation ends
+        scheduleOnRN(setIsMenuOpen, false);
+      }
+    });
+  };
+
+  // Main menu "bubble" animation styles
+  const menuContainerStyle = useAnimatedStyle(() => {
+    return {
+      opacity: progressValue.value,
+      transform: [
+        { translateY: -progressValue.value * 70 }, // Fly up effect
+        { scale: menuContainerScaleValue.value }, // Shrink effect on item press
+      ],
+      // Morph from tiny point to 90% width
+      width: `${interpolate(progressValue.value, [0, 1], [0, 90])}%`,
+      // Dynamic height based on measured content
+      height: interpolate(
+        progressValue.value,
+        [0, 1],
+        [0, contentHeight.value]
+      ),
+    };
+  });
+
   if (!loaded) return null;
+
   return (
     <SafeAreaView style={styles.container} edges={[]}>
-      <View style={styles.bgContainer}>
-        <Image source={require("../assets/bg.png")} style={styles.bgImage} />
-        <BlurView intensity={30} style={styles.blurViewContainer}>
-          <Text style={styles.mainContentTitle}>Title</Text>
-          <Text style={styles.mainContentText}>
-            This is the{" "}
-            <Text style={{ fontSize: 30, color: "#f56c0aff" }}>main</Text>{" "}
-            content of the{" "}
-            <Text style={{ fontSize: 30, color: "#0a75f0ff" }}>screen</Text>.
-            The animated{" "}
-            <Text style={{ fontSize: 30, color: "#e339f6ff" }}>bubbles</Text>{" "}
-            are part of the menu{" "}
-            <Text style={{ fontSize: 30, color: "#6d10efff" }}>background</Text>
-          </Text>
-        </BlurView>
+      <MainContent />
+      {isMenuOpen && (
+        <AnimatedPressable
+          onPress={(e) => {
+            closeMenuHandler();
+          }}
+          style={[styles.opacityBg, opacityBgStyles]}
+        >
+          <Animated.View style={[styles.menuWrapper, menuContainerStyle]}>
+            <Animated.View
+              style={styles.menuContainer}
+              onLayout={(e) => {
+                // Capture the actual height of the menu items for the animation
+                contentHeight.value = e.nativeEvent.layout.height;
+              }}
+            >
+              {menuItems.map((item, index) => (
+                <MenuItem
+                  key={index}
+                  item={item}
+                  selectedMenuItem={selectedMenuItem}
+                  setSelectedMenuItem={setSelectedMenuItem}
+                  menuContainerScaleValue={menuContainerScaleValue}
+                />
+              ))}
+            </Animated.View>
+          </Animated.View>
+        </AnimatedPressable>
+      )}
+      <AnimatedPressable
+        onPressIn={() =>
+          (menuButtonScale.value = withTiming(0.9, { duration: 200 }))
+        }
+        onPressOut={() =>
+          (menuButtonScale.value = withSpring(1, {
+            stiffness: 900,
+            damping: 50,
+          }))
+        }
+        onPress={() => {
+          if (!isMenuOpen) {
+            setIsMenuOpen(true);
+          }
+
+          if (progressValue.value === 0) {
+            progressValue.value = withTiming(1, { duration: 400 });
+          } else {
+            closeMenuHandler();
+          }
+        }}
+        style={[styles.menuButtonCont, menuButtonStyle]}
+      >
         <View
           style={{
-            height: BOTTOM_HALF_HEIGHT,
-            flexDirection: "row",
-            width: "100%",
+            padding: 10,
+            backgroundColor: "#2c2b2bff",
+            borderRadius: 30,
           }}
         >
-          {/* Bubbles will be rendered here */}
-          {BUBBLES_DATA.map((bubble, index) => (
-            <View
-              key={index}
-              style={[{ position: "absolute" }, bubble.position]}
-            >
-              <Bubble color={bubble.color} icon={bubble.icon} />
-            </View>
-          ))}
+          <X color={"white"} />
         </View>
-      </View>
+
+        <Text style={{ fontSize: 18, fontFamily: "Goldman-Bold" }}>Menu</Text>
+      </AnimatedPressable>
       <StatusBar style="auto" />
     </SafeAreaView>
   );
@@ -58,47 +162,51 @@ const styles = StyleSheet.create({
     justifyContent: "flex-start",
     alignItems: "center",
   },
-  bgContainer: {
-    flex: 1,
-    justifyContent: "flex-end",
-    width: "100%",
+
+  menuButtonCont: {
+    position: "absolute",
+    bottom: 30,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingRight: 14,
+    padding: 4,
+    backgroundColor: "#eeeeee9b",
+    borderRadius: 30,
+    borderWidth: 0.5,
+    borderColor: "#eeeeee",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 5,
   },
-  bgImage: {
+  opacityBg: {
     position: "absolute",
     top: 0,
     left: 0,
     right: 0,
-    bottom: 0,
+    backgroundColor: "#00000026",
     height: "100%",
     width: "100%",
-    objectFit: "cover",
   },
-  blurViewContainer: {
+  menuWrapper: {
+    width: "80%",
     position: "absolute",
+    bottom: 30,
+    backgroundColor: "white",
+    alignSelf: "center",
+    borderRadius: 16,
+    gap: 14,
+    overflow: "hidden",
+    justifyContent: "center",
+  },
+
+  menuContainer: {
+    position: "absolute",
+    opacity: 1,
     width: "100%",
-    bottom: 0,
-    top: 0,
-    left: 0,
-    height: "100%",
-    justifyContent: "space-evenly",
-    alignItems: "center",
-    backgroundColor: "rgba(34, 32, 32, 0.2)",
-    paddingHorizontal: 50,
-    paddingBottom: 120,
-  },
-  mainContentTitle: {
-    fontSize: 34,
-    fontFamily: "Goldman-Bold",
-    color: "#0936e9ff",
-  },
-  mainContentText: {
-    textAlign: "center",
-    fontSize: 18,
-    fontFamily: "Goldman-Bold",
-    color: "#080808ff",
-    shadowColor: "#f8f8f8ff",
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.7,
-    shadowRadius: 4,
+    gap: 0,
+    padding: 20,
   },
 });
